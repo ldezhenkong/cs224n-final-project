@@ -38,7 +38,7 @@ class BERTAdversarialDatasetAugmentation:
     ):
         self.baseline = baseline
         self.language_model = language_model
-        self.semantic_sim = semantic_sim
+        self.semantic_sim = semantic_sim # ()
         self.k = k
 
         self.MASK_CHAR = u"\u2047"
@@ -73,6 +73,15 @@ class BERTAdversarialDatasetAugmentation:
         sentences in which the model fails to correclty predict the label.
         """
         # TODO: Implement me!
+    
+    def _replace_mask(self, masked, token):
+        """
+        Replace masked_character in masked with token
+        """
+        return [
+            token if item == self.MASK_CHAR else item
+            for item in masked 
+        ]
 
     def _generate_mask(self, sentence, idx, BAE_TYPE='R'):
         if BAE_TYPE == 'R':
@@ -102,10 +111,14 @@ class BERTAdversarialDatasetAugmentation:
             tokens = self._predict_top_k(masked) # T (paper)
             filtered_tokens = self._filter_tokens(tokens)
             perturbed_sentences = [ # L (paper)
-                sentence[:idx-1] + token + sentence[idx+1:]
+                self._replace_mask(masked, token)
                 for token in filtered_tokens
             ]
 
+            # This is our deviation from BAE!
+            # ignore sentences that don't cause baseline to fail
+            # TODO: Discuss as group. Should we also allow cases where it doesn't fail?
+   
             perturbed_and_baseline_fails = self._baseline_fails(perturbed_sentences, label)
 
             # If no perturbation works, move to the next most important mask.
