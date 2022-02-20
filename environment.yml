@@ -4,13 +4,14 @@ channels:
   - defaults
 dependencies:
   - pip=20.3.1
-  - python=3.6.8
+  - python
   - numpy
   - tqdm
   - pip:
-    - torch==1.7.1
-    - tqdm==4.49.0
-    - transformers==4.2.2
+    - torch
+    - tqdm
+    - transformers
     - tensorboard
     - tensorflow
     - tensorboardX
+    - sentence-transformers
