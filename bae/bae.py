@@ -123,13 +123,13 @@ class BERTAdversarialDatasetAugmentation:
         # Unable to find a good perturbation!
         return []
 
-    def perturb_dataset(self, dataset, **options):
+    def perturb_dataset(self, dataset, bae_type='R'):
         """
         Given a dataset, containing (S, y) pairs,
         compute a new dataset, with perturbations!
-        
-        TODO: Implement me!
         """
-        ...
+
+        for (sentence, label) in dataset:
+            yield self.perturb(sentence, label, BAE_TYPE=bae_type)
 
 ################################### PUBLIC ####################################
