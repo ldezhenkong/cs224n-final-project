@@ -13,56 +13,115 @@ Class is instantiated with:
     - LM :: the language model used to predict tokens
     - semantic_similarity :: a function computing the semantic 
       similarity between two sentences.
+    - k :: hyperparm-> number of masks to consider per perturbation.
 
-Input:
-    - S = [t1, t2... tn] :: a training example sentence.
-    - y :: the ground truth label for S.
+PUBLIC INTERFACE:
+def perturb:
+    Input:
+        - sentence :: a training example sentence.
+        - label :: the ground truth label for S.
+        - BAE_TYPE :: whether to apply replace, left insert, or right insert.
+    Output:
+        - perturbed_sentence :: the perturbed sentence
 
-Output:
-    - S' :: the perturbed sentence
+def perturb_dataset:
+    Input:
+        - dataset :: iterator of (sentence, label) pairs
+    Output:
+        - dataset' :: iterator of (perturbed_sentence, label) pairs
+
 """
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
-        self, baseline, language_model, semantic_sim
+        self, baseline, language_model, semantic_sim, k
     ):
         self.baseline = baseline
         self.language_model = language_model
         self.semantic_sim = semantic_sim
+        self.k = k
 
         self.MASK_CHAR = u"\u2047"
-        # self.PAD_CHAR = u"\u25A1"
 
 ################################### PRIVATE ###################################
     def _estimate_importance(self, sentence):
         """
         Estimates the importance of each token in the sentence, using
         the baseline model.
-        """
 
+        Returns mask spots in DESCENDING order of importance.
+        """
+        # TODO: Implement me!
+
+    def _predict_top_k(self, masked):
+        """
+        Predicts the top k tokens for masked sentence, of the form
+        mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
+        """
+        # TODO: Implement me!
+
+    def _filter_tokens(self, tokens):
+        """
+        Filters tokens, based on https://arxiv.org/pdf/2004.01970.pdf p2-3
+        (end of page 2, start of page 3)
+        """
+        # TODO: Implement me!
+
+    def _baseline_fails(self, perturbed_sentences, label):
+        """
+        Given a list of perturbed sentences, returns the perturbed
+        sentences in which the model fails to correclty predict the label.
+        """
+        # TODO: Implement me!
+
+    def _generate_mask(self, sentence, idx, BAE_TYPE='R'):
+        if BAE_TYPE == 'R':
+            return sentence[:idx] + [self.MASK_CHAR] + sentence[idx+1:]
+        
+        if BAE_TYPE == "I-LEFT":
+            sentence.insert(idx, self.MASK_CHAR)
+            return sentence
+        
+        if BAE_TYPE == "I-RIGHT":
+            sentence.insert(idx+1, self.MASK_CHAR)
+            return sentence
 
 ################################### PRIVATE ################################### 
 # ----------------------------------------------------------------------------#
 ################################### PUBLIC ####################################
 
-    def perturb_R(self, sentence, label):
+    def perturb(self, sentence, label, BAE_TYPE='R'):
         """
         Implements the perturbation algorthim described above.
         Based off of the BAE-R algorithm.
-
-        TODO: Implement me!
         """
-        adversarial_sentence = sentence
-        importances = self._estimate_importance(sentence)
+        importances = self._estimate_importance(sentence) # I (paper)
 
+        for (importance, idx) in importances:
+            masked = self._generate_mask(sentence, idx, BAE_TYPE)
+            tokens = self._predict_top_k(masked) # T (paper)
+            filtered_tokens = self._filter_tokens(tokens)
+            perturbed_sentences = [ # L (paper)
+                sentence[:idx-1] + token + sentence[idx+1:]
+                for token in filtered_tokens
+            ]
 
-    def perturb_I(self, sentence, label):
-        """
-        Implements the perturbation algorthim described above.
-        Based off of the BAE-I algorithm.
+            perturbed_and_baseline_fails = self._baseline_fails(perturbed_sentences, label)
 
-        TODO: Implement me!
-        """
+            # If no perturbation works, move to the next most important mask.
+            if perturbed_and_baseline_fails:
+                (sim, best_sentence) = max([
+                    (
+                        self.semantic_sim(sentence, perturbed_sentence), 
+                        perturbed_sentence
+                    )
+                    for perturbed_sentence in perturbed_and_baseline_fails
+                ])
+
+                return best_sentence
+        
+        # Unable to find a good perturbation!
+        return []
 
     def perturb_dataset(self, dataset, **options):
         """
@@ -72,4 +131,5 @@ class BERTAdversarialDatasetAugmentation:
         TODO: Implement me!
         """
         ...
+
 ################################### PUBLIC ####################################
