@@ -31,6 +31,8 @@ def perturb_dataset:
         - dataset' :: iterator of (perturbed_sentence, label) pairs
 
 """
+from semantic_similarity_scorer import SemanticSimilarityScorer
+import numpy as np
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
@@ -123,15 +125,16 @@ class BERTAdversarialDatasetAugmentation:
 
             # If no perturbation works, move to the next most important mask.
             if perturbed_and_baseline_fails:
-                (sim, best_sentence) = max([
-                    (
-                        self.semantic_sim(sentence, perturbed_sentence), 
-                        perturbed_sentence
-                    )
-                    for perturbed_sentence in perturbed_and_baseline_fails
-                ])
-
-                return best_sentence
+                # Get embeddings from the similarity scorer
+                embeddings = self.semantic_sim.encode([sentence] + perturbed_sentences)
+                original_embedding = embeddings[:1] # 1 x embed_size matrix
+                perturbed_embeddings = embeddings[1:] # |perturbed_sentences| x embed_size matrix
+                # score() returns 1 x |perturbed_sentences| matrix of similarities by inner product.
+                # Flatten and get the index with max score, which is the index of the best sentence.
+                scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
+                best_sentence_index = np.argmax(scores)
+                
+                return perturbed_sentences[best_sentence_index]
         
         # Unable to find a good perturbation!
         return []
