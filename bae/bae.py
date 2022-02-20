@@ -30,15 +30,33 @@ class BERTAdversarialDatasetAugmentation:
         self.language_model = language_model
         self.semantic_sim = semantic_sim
 
-    def _perturb_R(sentence, label):
+        self.MASK_CHAR = u"\u2047"
+        # self.PAD_CHAR = u"\u25A1"
+
+################################### PRIVATE ###################################
+    def _estimate_importance(self, sentence):
+        """
+        Estimates the importance of each token in the sentence, using
+        the baseline model.
+        """
+
+
+################################### PRIVATE ################################### 
+# ----------------------------------------------------------------------------#
+################################### PUBLIC ####################################
+
+    def perturb_R(self, sentence, label):
         """
         Implements the perturbation algorthim described above.
         Based off of the BAE-R algorithm.
 
         TODO: Implement me!
         """
+        adversarial_sentence = sentence
+        importances = self._estimate_importance(sentence)
 
-    def _perturb_I(sentence, label):
+
+    def perturb_I(self, sentence, label):
         """
         Implements the perturbation algorthim described above.
         Based off of the BAE-I algorithm.
@@ -46,7 +64,7 @@ class BERTAdversarialDatasetAugmentation:
         TODO: Implement me!
         """
 
-    def perturb_dataset(dataset, **options):
+    def perturb_dataset(self, dataset, **options):
         """
         Given a dataset, containing (S, y) pairs,
         compute a new dataset, with perturbations!
@@ -54,3 +72,4 @@ class BERTAdversarialDatasetAugmentation:
         TODO: Implement me!
         """
         ...
+################################### PUBLIC ####################################
