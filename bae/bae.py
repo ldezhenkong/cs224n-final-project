@@ -31,7 +31,6 @@ def perturb_dataset:
         - dataset' :: iterator of (perturbed_sentence, label) pairs
 
 """
-from semantic_similarity_scorer import SemanticSimilarityScorer
 import numpy as np
 
 class BERTAdversarialDatasetAugmentation:

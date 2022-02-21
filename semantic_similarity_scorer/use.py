@@ -1,4 +1,4 @@
-from semantic_similarity_scorer import SemanticSimilarityScorer
+from scorer import SemanticSimilarityScorer
 
 import tensorflow as tf
 

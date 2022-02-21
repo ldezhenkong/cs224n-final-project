@@ -1,4 +1,4 @@
-from semantic_similarity_scorer import SemanticSimilarityScorer
+from scorer import SemanticSimilarityScorer
 from sentence_transformers import SentenceTransformer
 
 class SBERTScorer(SemanticSimilarityScorer):
