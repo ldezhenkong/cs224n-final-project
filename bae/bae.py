@@ -32,6 +32,16 @@ def perturb_dataset:
 
 """
 import numpy as np
+# TODO: note that we need to run the following one time in order for pos tagger to work
+# >>> import nltk
+# >>> nltk.download('averaged_perceptron_tagger')
+from nltk import pos_tag
+# TODO: note that we need to run the following one time in order for synset to work
+# >>> import nltk
+# >>> nltk.download('wordnet')
+from nltk.corpus import wordnet
+import util
+import torch
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
@@ -41,6 +51,7 @@ class BERTAdversarialDatasetAugmentation:
         self.language_model = language_model
         self.semantic_sim = semantic_sim # ()
         self.k = k
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
         self.MASK_CHAR = u"\u2047"
 
@@ -50,23 +61,30 @@ class BERTAdversarialDatasetAugmentation:
         Estimates the importance of each token in the sentence, using
         the baseline model.
 
-        Returns mask spots in DESCENDING order of importance.
+        Returns mask indices in DESCENDING order of importance.
         """
         # TODO: Implement me!
+    
+    def _pos_tags(self, sentence):
+        return pos_tag(sentence)
 
-    def _predict_top_k(self, masked):
+    def _predict_top_k(self, masked, tag, method='synonym'):
         """
         Predicts the top k tokens for masked sentence, of the form
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
         """
-        # TODO: Implement me!
+        if method == 'synonym':
+            syns = wordnet.synsets(masked, pos=util.get_wordnet_pos(tag))
+            lemmas = syns.lemmas()
+            return [l.name() for l in lemmas[:min(self.k, len(lemmas))]]
+        # TODO: implement BERT version
 
-    def _filter_tokens(self, tokens):
+    def _filter_tokens(self, tokens, tag):
         """
         Filters tokens, based on https://arxiv.org/pdf/2004.01970.pdf p2-3
         (end of page 2, start of page 3)
         """
-        # TODO: Implement me!
+        return filter(lambda x: x[1] == tag, pos_tag(tokens))
 
     def _baseline_fails(self, perturbed_sentences, label):
         """
@@ -109,11 +127,14 @@ class BERTAdversarialDatasetAugmentation:
         Based off of the BAE-R algorithm.
         """
         importances = self._estimate_importance(sentence) # I (paper)
+        tags = self._pos_tags(sentence)
 
         for (importance, idx) in importances:
+            tag = tags[idx]
             masked = self._generate_mask(sentence, idx, BAE_TYPE)
-            tokens = self._predict_top_k(masked) # T (paper)
-            filtered_tokens = self._filter_tokens(tokens)
+            # 
+            tokens = self._predict_top_k(masked, tag) # T (paper)
+            filtered_tokens = self._filter_tokens(tokens, tag)
             perturbed_sentences = [ # L (paper)
                 self._replace_mask(masked, token)
                 for token in filtered_tokens
