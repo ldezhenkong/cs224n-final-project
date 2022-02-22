@@ -128,7 +128,7 @@ class BERTAdversarialDatasetAugmentation:
             # If no perturbation works, move to the next most important mask.
             if perturbed_and_baseline_fails:
                 # Get embeddings from the similarity scorer
-                embeddings = self.semantic_sim.encode([sentence] + perturbed_sentences)
+                embeddings = self.semantic_sim.encode([sentence] + perturbed_and_baseline_fails)
                 original_embedding = embeddings[:1] # 1 x embed_size matrix
                 perturbed_embeddings = embeddings[1:] # |perturbed_sentences| x embed_size matrix
                 # score() returns 1 x |perturbed_sentences| matrix of similarities by inner product.
@@ -136,7 +136,7 @@ class BERTAdversarialDatasetAugmentation:
                 scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
                 best_sentence_index = np.argmax(scores)
                 
-                return perturbed_sentences[best_sentence_index]
+                return perturbed_and_baseline_fails[best_sentence_index]
         
         # Unable to find a good perturbation!
         return []
