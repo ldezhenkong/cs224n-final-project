@@ -73,8 +73,11 @@ class BERTAdversarialDatasetAugmentation:
         Given a list of perturbed sentences, returns the perturbed
         sentences in which the model fails to correclty predict the label.
         """
-        # TODO: Implement me!
-    
+        return [
+            sentence for sentence in perturbed_sentences
+            if self.baseline.predict(sentence) != label # Probably need to update this TODO
+        ]
+
     def _replace_mask(self, masked, token):
         """
         Replace masked_character in masked with token
