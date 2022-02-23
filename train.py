@@ -241,13 +241,22 @@ class Trainer():
         return best_scores
 
 def get_dataset(args, datasets, data_dir, tokenizer, split_name):
-    datasets = datasets.split(',')
+    dir_dict = {}
+    if args.train_dir_and_datasets is not None and args.train_dir_and_datasets != '':
+        dir_and_datasets_list = args.train_dir_and_datasets.split(';')
+        for dir_and_datasets in dir_and_datasets_list:
+            directory, datasets_str = dir_and_datasets.split(':')
+            dir_dict[directory] = datasets_str.split(',')
+    else:
+        dir_dict[data_dir] = datasets.split(',')
     dataset_dict = None
     dataset_name=''
-    for dataset in datasets:
-        dataset_name += f'_{dataset}'
-        dataset_dict_curr = util.read_squad(f'{data_dir}/{dataset}')
-        dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
+    for directory, datasets_list in dir_dict.items():
+        for dataset in datasets_list:
+            dataset_name += f'_{dataset}'
+            print(f'Preparing {directory}/{dataset}...')
+            dataset_dict_curr = util.read_squad(f'{directory}/{dataset}')
+            dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
     data_encodings = read_and_process(args, tokenizer, dataset_dict, data_dir, dataset_name, split_name)
     return util.QADataset(data_encodings, train=(split_name=='train')), dataset_dict
 
