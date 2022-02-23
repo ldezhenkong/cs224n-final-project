@@ -20,4 +20,5 @@ log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
 log.info("Preparing Training Data...")
 args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
-print(train_dataset)
+for item in train_dataset:
+    print(item)
