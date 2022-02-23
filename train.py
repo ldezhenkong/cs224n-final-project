@@ -240,10 +240,10 @@ class Trainer():
                     global_idx += 1
         return best_scores
 
-def get_dataset(args, datasets, data_dir, tokenizer, split_name):
+def get_dataset(args, dir_and_datasets, datasets, data_dir, tokenizer, split_name):
     dir_dict = {}
-    if args.train_dir_and_datasets is not None and args.train_dir_and_datasets != '':
-        dir_and_datasets_list = args.train_dir_and_datasets.split(';')
+    if dir_and_datasets is not None and dir_and_datasets != '':
+        dir_and_datasets_list = dir_and_datasets.split(';')
         for dir_and_datasets in dir_and_datasets_list:
             directory, datasets_str = dir_and_datasets.split(':')
             dir_dict[directory] = datasets_str.split(',')
@@ -277,9 +277,9 @@ def main():
         log.info("Preparing Training Data...")
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         trainer = Trainer(args, log)
-        train_dataset, _ = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
+        train_dataset, _ = get_dataset(args, args.train_dir_and_datasets, args.train_datasets, args.train_dir, tokenizer, 'train')
         log.info("Preparing Validation Data...")
-        val_dataset, val_dict = get_dataset(args, args.train_datasets, args.val_dir, tokenizer, 'val')
+        val_dataset, val_dict = get_dataset(args, args.val_dir_and_datasets, args.train_datasets, args.val_dir, tokenizer, 'val')
         train_loader = DataLoader(train_dataset,
                                 batch_size=args.batch_size,
                                 sampler=RandomSampler(train_dataset))
