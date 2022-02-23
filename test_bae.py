@@ -20,13 +20,13 @@ def get_training_data():
     log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
     log.info("Preparing Training Data...")
     args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    _, data_dict = get_dataset(args, args.train_datasets, args.train_dir, tokenizer, 'train')
+    _, data_dict = get_dataset(args, args.train_dir_and_datasets, args.train_datasets, args.train_dir, tokenizer, 'train')
     return data_dict
 
 def get_perturbed_sentences(data_dict, perturber):
-    for i, context in data_dict['context']:
+    for i, context in enumerate(data_dict['context']):
         # TODO: generate and pass in answer_end indices 
-        perturbation_results = perturber.perturb(context, data_dict['answer'][i])
+        perturbation_results = perturber.perturb(context, data_dict['answer'][i]['answer_start'])
         print(perturbation_results)
 
 def main():

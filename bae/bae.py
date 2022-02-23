@@ -41,7 +41,7 @@ from nltk.tokenize import WhitespaceTokenizer
 # >>> import nltk
 # >>> nltk.download('wordnet')
 from nltk.corpus import wordnet
-import util
+from .util import get_wordnet_pos
 import torch
 import random
 
@@ -82,7 +82,8 @@ class BERTAdversarialDatasetAugmentation:
         """
         if method == 'random':
             idx_importance = [(i, 0.0) for i in range(len(sentence))]
-            return random.shuffle(idx_importance)
+            random.shuffle(idx_importance)
+            return idx_importance
         else:
             # TODO: implement importance by baseline 
             raise NotImplementedError
@@ -96,9 +97,9 @@ class BERTAdversarialDatasetAugmentation:
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
         """
         if method == 'synonym':
-            syns = wordnet.synsets(masked, pos=util.get_wordnet_pos(tag))
-            lemmas = syns.lemmas()
-            return [l.name() for l in lemmas[:min(self.k, len(lemmas))]]
+            syns = wordnet.synsets(masked, pos=get_wordnet_pos(tag))
+            lemmas = [lemma for syn in syns for lemma in syn.lemmas()]
+            return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != masked.lower()]
         # TODO: implement BERT version
 
     def _filter_tokens(self, tokens, tag):
@@ -106,7 +107,7 @@ class BERTAdversarialDatasetAugmentation:
         Filters tokens, based on https://arxiv.org/pdf/2004.01970.pdf p2-3
         (end of page 2, start of page 3)
         """
-        return filter(lambda x: x[1] == tag, pos_tag(tokens))
+        return list(set([x[0] for x in filter(lambda x: x[1] == tag, pos_tag(tokens))]))
 
     def _baseline_fails(self, perturbed_sentences):
         """
@@ -118,7 +119,7 @@ class BERTAdversarialDatasetAugmentation:
             if self.baseline.predict(sentence_answer[0]) != sentence_answer[1] # Probably need to update this TODO
         ]
 
-    def _replace_mask(self, masked, token, word_idx_to_offset, answer_starts):
+    def _replace_mask(self, masked, token, original_token, word_idx_to_offset, answer_starts):
         """
         Replace masked_character in masked with token.
         Return the new token list, as well as the updated answer starting index. 
@@ -127,10 +128,12 @@ class BERTAdversarialDatasetAugmentation:
         mask_index = masked.index(self.MASK_CHAR)
         new_answer_starts = []
         for answer_start in answer_starts:
-            if answer_start > word_idx_to_offset[mask_index]:
+            new_answer_start = answer_start
+            if new_answer_start > word_idx_to_offset[mask_index]:
                 # if answer starts after the replaced token, update the start
                 # to reflect the shift due to token length change.
-                new_answer_starts.append(answer_start + len(token) - (word_idx_to_offset[mask_index + 1] - word_idx_to_offset[mask_index]))
+                new_answer_start += len(token) - len(original_token)
+            new_answer_starts.append(new_answer_start)
         return [
             token if item == self.MASK_CHAR else item
             for item in masked 
@@ -167,13 +170,13 @@ class BERTAdversarialDatasetAugmentation:
         perturbation_results = []
 
         for (idx, importance) in importances:
-            tag = tags[idx]
+            original_token = sentence[idx]
+            tag = tags[idx][1]
             masked = self._generate_mask(sentence, idx, BAE_TYPE)
-            # 
-            tokens = self._predict_top_k(masked, tag) # T (paper)
+            tokens = self._predict_top_k(original_token, tag) # T (paper)
             filtered_tokens = self._filter_tokens(tokens, tag)
             perturbed_sentences = [ # L (paper)
-                self._replace_mask(masked, token, word_idx_to_offset, answer_starts)
+                self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts)
                 for token in filtered_tokens
             ]
 
@@ -200,8 +203,8 @@ class BERTAdversarialDatasetAugmentation:
                 # Flatten and get the index with max score, which is the index of the best sentence.
                 scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
                 best_sentence_index = np.argmax(scores)
-                
-                perturbation_results.append(perturbed_and_baseline_fails[best_sentence_index])
+                # add the sentence string (already created from sim_input) and the answer start.
+                perturbation_results.append((sim_input[best_sentence_index+1], perturbed_and_baseline_fails[best_sentence_index][1]))
         
         # Unable to find a good perturbation!
         return perturbation_results
