@@ -11,6 +11,12 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import Dataset
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
+
+def pprint(s):
+    pp.pprint(s)
 
 def set_seed(seed):
     random.seed(seed)

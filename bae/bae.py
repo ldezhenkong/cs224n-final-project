@@ -33,13 +33,13 @@ def perturb_dataset:
 """
 import numpy as np
 # TODO: note that we need to run the following one time in order for pos tagger to work
-# >>> import nltk
-# >>> nltk.download('averaged_perceptron_tagger')
+# import nltk
+# nltk.download('averaged_perceptron_tagger')
 from nltk import pos_tag
 from nltk.tokenize import WhitespaceTokenizer
 # TODO: note that we need to run the following one time in order for synset to work
-# >>> import nltk
-# >>> nltk.download('wordnet')
+# import nltk
+# nltk.download('wordnet')
 from nltk.corpus import wordnet
 from .util import get_wordnet_pos
 import torch

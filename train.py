@@ -256,6 +256,7 @@ def get_dataset(args, dir_and_datasets, datasets, data_dir, tokenizer, split_nam
             dataset_name += f'_{dataset}'
             print(f'Preparing {directory}/{dataset}...')
             dataset_dict_curr = util.read_squad(f'{directory}/{dataset}')
+            util.pprint(dataset_dict_curr)
             dataset_dict = util.merge(dataset_dict, dataset_dict_curr)
     data_encodings = read_and_process(args, tokenizer, dataset_dict, data_dir, dataset_name, split_name)
     return util.QADataset(data_encodings, train=(split_name=='train')), dataset_dict
