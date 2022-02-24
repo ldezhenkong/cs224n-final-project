@@ -7,9 +7,6 @@ from transformers import DistilBertTokenizerFast
 from transformers import DistilBertForQuestionAnswering
 from bae.bae import BERTAdversarialDatasetAugmentation
 from semantic_similarity_scorer.sbert import SBERTScorer
-import pprint
-
-pp = pprint.PrettyPrinter(indent=4)
 
 # define parser and arguments
 def get_training_data():
@@ -36,12 +33,12 @@ def get_perturbed_sentences(old_data_dict, perturber):
         'answer': []
     }
     
-    num_data_dict_entires = len(old_data_dict['context'])
+    num_data_dict_entries = len(old_data_dict['context'])
 
-    for i in range(num_data_dict_entires):
+    for i in range(num_data_dict_entries):
 
-        if i == 100:
-            break
+        if i % (num_data_dict_entries // 20) == 0:
+            print('current i: {}, total len:{}'.format(i, num_data_dict_entries))
 
         # TODO: generate and pass in answer_end indices
         old_question = old_data_dict['question'][i]
@@ -81,24 +78,30 @@ def get_perturbed_sentences(old_data_dict, perturber):
     return new_data_dict
 
 def write_to_disk(out_path, new_data_dict):
-    # pp.pprint(new_data_dict)
 
     disk_dict = {'version': '1.1', 'data': []}
 
+    used_ids = set() 
     for i in range(len(new_data_dict['question'])):
         question = new_data_dict['question'][i]
         context = new_data_dict['context'][i]
         id = new_data_dict['id'][i]
         answer = new_data_dict['answer'][i]
 
-        qas_obj = [{
-            'question': question,
-            'id': id,
-            'answers' : [answer]
-        }]
-
         TITLE_LENGTH = 50
         padded_title = question[0:TITLE_LENGTH] + ' ' * max(TITLE_LENGTH - len(question), 0)
+
+        # hack to create unique IDs for each perturbation TODO maybe change this
+        new_id = hex(int(id, 16)+i)[2:]
+
+        assert new_id not in used_ids
+        used_ids.add(new_id)
+
+        qas_obj = [{
+            'question': question,
+            'id': new_id,
+            'answers' : [answer]
+        }]
 
         disk_dict['data'].append({
             'title': padded_title,
@@ -108,8 +111,6 @@ def write_to_disk(out_path, new_data_dict):
             }]}
         )
 
-    print(disk_dict)
-
     with open(out_path, 'w') as f:
         json.dump(disk_dict, f)
     
@@ -117,35 +118,28 @@ def write_to_disk(out_path, new_data_dict):
 
 def main():
     data_dict = get_training_data()
-    print('data dict keys:', data_dict.keys())
-    q, c, i, a = data_dict['question'], data_dict['context'], data_dict['id'], data_dict['answer']
-    for idx in range(len(q)):
-        # if idx < len(q)-50:
-        #     continue
-        if idx == 22:
-            break
-        print('q:', q[idx])
-        print('c:', c[idx])
-        print('i:', i[idx])
-        print('a:', a[idx])
-        # if idx == 5:
-        #     break
+    
+    # print data_dict samples
+    NUM_SAMPLES = 5
+    for i in range(NUM_SAMPLES):
+        question = data_dict['question'][i]
+        context = data_dict['context'][i]
+        id = data_dict['id'][i]
+        answer = data_dict['answer'][i]
+        print('Sample data_dict entry #{}'.format(i))
+        print('\tQuestion: {}'.format(question))
+        print('\tContext: {}'.format(context))
+        print('\tID: {}'.format(id))
+        print('\tAnswer: {}'.format(answer))
+        print('')
+
     perturber = BERTAdversarialDatasetAugmentation(None, None, SBERTScorer(), 10)
     new_data_dict = get_perturbed_sentences(data_dict, perturber)
 
-    out_path = 'datasets/oodomain_train/relation_extraction_perturbed'
+    out_path = 'datasets/oodomain_train_perturbed/race_perturbed'
     write_to_disk(out_path, new_data_dict)
-    # write_to_disk('', all_perturbation_results)
-    # for i, perturbation_result in enumerate(all_perturbation_results):
-    #     print('old question:', q[i])
-    #     print('old context:', c[i])
-    #     print('old answer:', a[i])
-    #     for elem in perturbation_result:
-    #         print('elem:', elem)
-    #     print('\n\n')
 
-    # all_perturbation_results.append(perturbation_results)
-
+    get_training_data()
     # TODO write the perturbed sentences to disk
 
 if __name__ == '__main__':
