@@ -26,5 +26,8 @@ def get_train_test_args():
     parser.add_argument('--train-dir-and-datasets', type=str, default='datasets/indomain_train:squad,nat_questions,newsqa;datasets/oodomain_train:race,relation_extraction,duorc')
     parser.add_argument('--val-dir-and-datasets', type=str, default='datasets/indomain_val:squad,nat_questions,newsqa;datasets/oodomain_val:race,relation_extraction,duorc')
 
+    parser.add_argument('--bae-type', type=str, default='R', help="can be R | I-LEFT | I-RIGHT")
+    parser.add_argument('--perturbed-data-out-path', type=str)
+
     args = parser.parse_args()
     return args

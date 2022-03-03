@@ -119,7 +119,7 @@ class BERTAdversarialDatasetAugmentation:
             if self.baseline.predict(sentence_answer[0]) != sentence_answer[1] # Probably need to update this TODO
         ]
 
-    def _replace_mask(self, masked, token, original_token, word_idx_to_offset, answer_starts):
+    def _replace_mask(self, masked, token, original_token, word_idx_to_offset, answer_starts, bae_type):
         """
         Replace masked_character in masked with token.
         Return the new token list, as well as the updated answer starting index. 
@@ -129,10 +129,20 @@ class BERTAdversarialDatasetAugmentation:
         new_answer_starts = []
         for answer_start in answer_starts:
             new_answer_start = answer_start
+            
             if new_answer_start > word_idx_to_offset[mask_index]:
                 # if answer starts after the replaced token, update the start
                 # to reflect the shift due to token length change.
-                new_answer_start += len(token) - len(original_token)
+                if bae_type == 'R':
+                    new_answer_start += len(token) - len(original_token)
+                elif bae_type == 'I-LEFT' or bae_type == 'I-RIGHT':
+                    new_answer_start += len(token)
+                else:
+                    raise NotImplementedError
+            # For now, if we're inserting at the starting answer token, we move the answer start
+            # as well
+            elif new_answer_start == word_idx_to_offset[mask_index] and (bae_type == 'I-LEFT' or bae_type == 'I-RIGHT'):
+                new_answer_start += len(token)
             new_answer_starts.append(new_answer_start)
         return [
             token if item == self.MASK_CHAR else item
@@ -144,12 +154,12 @@ class BERTAdversarialDatasetAugmentation:
             return sentence[:idx] + [self.MASK_CHAR] + sentence[idx+1:]
         
         if BAE_TYPE == "I-LEFT":
-            sentence.insert(idx, self.MASK_CHAR)
-            return sentence
+            return sentence[:idx] + [self.MASK_CHAR] + sentence[idx:]
         
         if BAE_TYPE == "I-RIGHT":
-            sentence.insert(idx+1, self.MASK_CHAR)
-            return sentence
+            return sentence[:idx+1] + [self.MASK_CHAR] + sentence[idx+1:]
+        
+        raise NotImplementedError
 
 ################################### PRIVATE ################################### 
 # ----------------------------------------------------------------------------#
@@ -176,7 +186,7 @@ class BERTAdversarialDatasetAugmentation:
             tokens = self._predict_top_k(original_token, tag) # T (paper)
             filtered_tokens = self._filter_tokens(tokens, tag)
             perturbed_sentences = [ # L (paper)
-                self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts)
+                self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts, BAE_TYPE)
                 for token in filtered_tokens
             ]
 
