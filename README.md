@@ -10,9 +10,9 @@
 ### Run test_bae
 - To run test_bae.py on a particular dataset, do
 ```
-python test_bae.py --train-dir-and-datasets="{relative_dataset_dir_path}:{dataset_name}"
+python test_bae.py --train-dir-and-datasets="{relative_dataset_dir_path}:{dataset_name} --perturbed-data-out-path="{relative_dataset_dir_path}:{perturbed_dataset_name}""
 ```
 e.g.
 ```
-python test_bae.py --train-dir-and-datasets="datasets/oodomain_train:relation_extraction"
+python test_bae.py --train-dir-and-datasets="datasets/oodomain_train:relation_extraction --perturbed-data-out-path="datasets/oodomain_train_perturbed/relation_extraction_pert32"
 ```
