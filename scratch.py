@@ -21,6 +21,7 @@ print(json.dumps(squad_dict['data'][0]['paragraphs'], indent = 1))
 # ]
 # ]
 
+# python test_bae.py --train-dir-and-datasets="datasets/oodomain_train:relation_extraction" --perturbed_data_out_path="oodomain_train_perturbed/re_newtry"
 
 
 # disk_json = {'version': '1.1', data: }

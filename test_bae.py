@@ -132,7 +132,9 @@ def print_data_dict_samples(data_dict, NUM_SAMPLES=5):
         print('')
 
 def main():
-    data_dict = get_training_data()
+    args = get_train_test_args()
+
+    data_dict = get_training_data(args)
     
     print_data_dict_samples(data_dict, NUM_SAMPLES=30)
 
