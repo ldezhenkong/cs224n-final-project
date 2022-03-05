@@ -36,7 +36,7 @@ def get_perturbed_sentences(old_data_dict, perturber):
     num_data_dict_entries = len(old_data_dict['context'])
 
     for i in range(num_data_dict_entries):
-
+        print('<i>:', i)
         if i % (num_data_dict_entries // 20) == 0:
             print('current i: {}, total len:{}'.format(i, num_data_dict_entries))
 
@@ -44,7 +44,10 @@ def get_perturbed_sentences(old_data_dict, perturber):
         old_question = old_data_dict['question'][i]
         old_id = old_data_dict['id'][i]
         old_context = old_data_dict['context'][i]
+
+        print('<b>:')
         perturbation_results = perturber.perturb(old_context, old_data_dict['answer'][i]['answer_start'])
+        print('<a>:')
 
         old_answer_start = old_data_dict['answer'][i]['answer_start'][0]
         old_answer_text = old_data_dict['answer'][i]['text'][0]
@@ -116,11 +119,8 @@ def write_to_disk(out_path, new_data_dict):
     
     return disk_dict
 
-def main():
-    data_dict = get_training_data()
-    
-    # print data_dict samples
-    NUM_SAMPLES = 5
+def print_data_dict_samples(data_dict, NUM_SAMPLES=5):
+    print("printing samples for new data_dict")
     for i in range(NUM_SAMPLES):
         question = data_dict['question'][i]
         context = data_dict['context'][i]
@@ -133,11 +133,17 @@ def main():
         print('\tAnswer: {}'.format(answer))
         print('')
 
+def main():
+    data_dict = get_training_data()
+    
+    print_data_dict_samples(data_dict, NUM_SAMPLES=30)
+    return
+
     perturber = BERTAdversarialDatasetAugmentation(None, None, SBERTScorer(), 10)
     new_data_dict = get_perturbed_sentences(data_dict, perturber)
 
-    out_path = 'datasets/oodomain_train_perturbed/race_perturbed'
-    write_to_disk(out_path, new_data_dict)
+    # out_path = 'datasets/oodomain_train_perturbed/race_perturbed'
+    # write_to_disk(out_path, new_data_dict)
 
     get_training_data()
     # TODO write the perturbed sentences to disk
