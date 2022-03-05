@@ -1,5 +1,5 @@
 import util
-import sys, os, json
+import sys, os, json, copy
 import torch
 from train import get_dataset
 from args import get_train_test_args
@@ -9,8 +9,7 @@ from bae.bae import BERTAdversarialDatasetAugmentation
 from semantic_similarity_scorer.sbert import SBERTScorer
 
 # define parser and arguments
-def get_training_data():
-    args = get_train_test_args()
+def get_training_data(args):
     util.set_seed(args.seed)
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
     if not os.path.exists(args.save_dir):
@@ -19,11 +18,12 @@ def get_training_data():
     log = util.get_logger(args.save_dir, 'log_train')
     log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
     log.info("Preparing Training Data...")
+    args = copy.copy(args)
     args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     _, data_dict = get_dataset(args, args.train_dir_and_datasets, args.train_datasets, args.train_dir, tokenizer, 'train')
     return data_dict
 
-def get_perturbed_sentences(old_data_dict, perturber):
+def get_perturbed_sentences(old_data_dict, perturber, args):
 
     # initialize dictionary for perturbed data
     new_data_dict = {
@@ -44,10 +44,7 @@ def get_perturbed_sentences(old_data_dict, perturber):
         old_question = old_data_dict['question'][i]
         old_id = old_data_dict['id'][i]
         old_context = old_data_dict['context'][i]
-
-        print('<b>:')
-        perturbation_results = perturber.perturb(old_context, old_data_dict['answer'][i]['answer_start'])
-        print('<a>:')
+        perturbation_results = perturber.perturb(old_context, old_data_dict['answer'][i]['answer_start'], BAE_TYPE=args.bae_type)
 
         old_answer_start = old_data_dict['answer'][i]['answer_start'][0]
         old_answer_text = old_data_dict['answer'][i]['text'][0]
@@ -68,7 +65,8 @@ def get_perturbed_sentences(old_data_dict, perturber):
             new_context, new_answer_start = elem[0], elem[1][0]
 
             # check that the perturbation does not change the number of tokens
-            assert len(new_context.split()) == len(old_context.split()) # ensures tokens are comma delimited
+            if args.bae_type == 'R':
+                assert len(new_context.split()) == len(old_context.split()) # ensures tokens are comma delimited
 
             # calculate new_answer - TODO: figure out punctuation issues
             new_answer_text = ' '.join(new_context[new_answer_start:].split()[:old_answer_num_tokens])
@@ -137,16 +135,17 @@ def main():
     data_dict = get_training_data()
     
     print_data_dict_samples(data_dict, NUM_SAMPLES=30)
-    return
 
     perturber = BERTAdversarialDatasetAugmentation(None, None, SBERTScorer(), 10)
-    new_data_dict = get_perturbed_sentences(data_dict, perturber)
+    new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
-    # out_path = 'datasets/oodomain_train_perturbed/race_perturbed'
-    # write_to_disk(out_path, new_data_dict)
+    output_dir = os.path.dirname(args.perturbed_data_out_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    get_training_data()
-    # TODO write the perturbed sentences to disk
+    write_to_disk(args.perturbed_data_out_path, new_data_dict)
+
+    get_training_data(args)
 
 if __name__ == '__main__':
     main()
