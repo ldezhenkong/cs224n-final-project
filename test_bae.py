@@ -152,7 +152,7 @@ def main():
     )
 
     top_k = perturber._predict_top_k(
-        ["Stanford", "is", "home", "of", "the", perturber.MASK_CHAR, "the", "world's", "best"],
+        ["Yesterday", "my", "father", "had", perturber.MASK_CHAR, "surgery"],
         method='bert'
     )
     print(top_k)
