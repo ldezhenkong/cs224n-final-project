@@ -151,6 +151,10 @@ def main():
         k=10
     )
 
+    top_k = perturber._predict_top_k(["Stanford", "is", "home", "of", "the", perturber.MASK_CHAR, "the", "world's", "best"])
+    print(top_k)
+    5/0
+
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
     output_dir = os.path.dirname(args.perturbed_data_out_path)
