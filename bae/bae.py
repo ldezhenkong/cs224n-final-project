@@ -57,6 +57,7 @@ class BERTAdversarialDatasetAugmentation:
         self.k = k
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.tokenizer = tokenizer
+        self.mlm = mlm
         self.MASK_CHAR = self.tokenizer.mask_token
         random.seed(224)
 
