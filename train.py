@@ -266,6 +266,8 @@ def main():
     args = get_train_test_args()
 
     util.set_seed(args.seed)
+
+    # https://towardsdatascience.com/how-to-use-bert-from-the-hugging-face-transformer-library-d373a22b0209
     model = DistilBertForQuestionAnswering.from_pretrained("distilbert-base-uncased")
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
 
