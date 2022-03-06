@@ -105,7 +105,7 @@ class BERTAdversarialDatasetAugmentation:
         else:
             text = " ".join(masked)
             model_input = self.tokenizer.encode_plus(text, return_tensors = "pt")
-            mask_index = torch.where(input["input_ids"][0] == self.tokenizer.mask_token_id)
+            mask_index = torch.where(model_input["input_ids"][0] == self.tokenizer.mask_token_id)
             output = self.mlm(**model_input)
             logits = output.logits
             softmax = F.softmax(logits, dim = -1)
