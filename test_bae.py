@@ -150,14 +150,6 @@ def main():
         mlm=mlm,
         k=10
     )
-
-    top_k = perturber._predict_top_k(
-        ["Yesterday", "my", "father", "had", perturber.MASK_CHAR, "surgery"],
-        method='bert'
-    )
-    print(top_k)
-    5/0
-
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
     output_dir = os.path.dirname(args.perturbed_data_out_path)
