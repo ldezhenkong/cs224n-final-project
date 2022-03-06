@@ -28,6 +28,7 @@ def get_train_test_args():
 
     parser.add_argument('--bae-type', type=str, default='R', help="can be R | I-LEFT | I-RIGHT")
     parser.add_argument('--perturbed-data-out-path', type=str)
+    parser.add_argument('--num_mutations', type=int, default=3)
 
     args = parser.parse_args()
     return args

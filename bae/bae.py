@@ -43,13 +43,13 @@ from nltk.tokenize import WhitespaceTokenizer
 from nltk.corpus import wordnet
 from .util import get_wordnet_pos
 import torch
-import random
+import random, copy
 from torch.nn import functional as F
 
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
-        self, baseline, language_model, semantic_sim, tokenizer, mlm, k
+        self, baseline, language_model, semantic_sim, tokenizer, mlm, k, num_mutations=1
     ):
         self.baseline = baseline
         self.language_model = language_model
@@ -58,6 +58,7 @@ class BERTAdversarialDatasetAugmentation:
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.tokenizer = tokenizer
         self.mlm = mlm
+        self.num_mutations = num_mutations
         self.MASK_CHAR = self.tokenizer.mask_token
         random.seed(224)
 
@@ -94,15 +95,15 @@ class BERTAdversarialDatasetAugmentation:
     def _pos_tags(self, sentence):
         return pos_tag(sentence)
 
-    def _predict_top_k(self, masked, tag=None, method='bert'):
+    def _predict_top_k(self, masked, original_token, tag=None, method='bert'):
         """
         Predicts the top k tokens for masked sentence, of the form
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
         """
         if method == 'synonym':
-            syns = wordnet.synsets(masked, pos=get_wordnet_pos(tag))
+            syns = wordnet.synsets(original_token, pos=get_wordnet_pos(tag))
             lemmas = [lemma for syn in syns for lemma in syn.lemmas()]
-            return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != masked.lower()]
+            return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != original_token.lower()]
         else:
             text = " ".join(masked)
             model_input = self.tokenizer.encode_plus(text, return_tensors = "pt")
@@ -116,12 +117,12 @@ class BERTAdversarialDatasetAugmentation:
                 for token in torch.topk(mask_word, self.k, dim = 1)[1][0]
             ]
 
-    def _filter_tokens(self, tokens, tag):
+    def _filter_tokens(self, tokens, original_token, tag):
         """
         Filters tokens, based on https://arxiv.org/pdf/2004.01970.pdf p2-3
         (end of page 2, start of page 3)
         """
-        return list(set([x[0] for x in filter(lambda x: x[1] == tag, pos_tag(tokens))]))
+        return list(set([x[0] for x in filter(lambda x: x[1] == tag and original_token != x[0], pos_tag(tokens))]))
 
     def _baseline_fails(self, perturbed_sentences):
         """
@@ -175,6 +176,39 @@ class BERTAdversarialDatasetAugmentation:
         
         raise NotImplementedError
 
+    def _get_most_similar_sentences(self, original_sentence, perturbed_sentences, num_best_results, use_baseline):
+        # This is our deviation from BAE!
+        # ignore sentences that don't cause baseline to fail
+        # TODO: Discuss as group. Should we also allow cases where it doesn't fail?
+        if use_baseline:
+            perturbed_and_baseline_fails = self._baseline_fails(perturbed_sentences)
+        else:
+            # just use all of them
+            perturbed_and_baseline_fails = perturbed_sentences
+
+        if not perturbed_and_baseline_fails:
+            return []
+
+        # Create the sentence strings from the perturbed sentence list as well as the original sentence.
+        sim_input_delimited = [original_sentence] + [sentence_answer[0] for sentence_answer in perturbed_and_baseline_fails]
+        sim_input = [" ".join(word_list) for word_list in sim_input_delimited]
+        # Get embeddings from the similarity scorer
+        embeddings = self.semantic_sim.encode(sim_input)
+        # first embedding is of the original sentence.
+        original_embedding = embeddings[:1] # 1 x embed_size matrix
+        perturbed_embeddings = embeddings[1:] # |perturbed_sentences| x embed_size matrix
+        # score() returns 1 x |perturbed_sentences| matrix of similarities by inner product.
+        # Flatten and get the index with max score, which is the index of the best sentence.
+        scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
+        best_sentence_indices = []
+        if num_best_results == 1:
+            best_sentence_indices = [np.argmax(scores)]
+        else:
+            best_sentence_indices = np.argpartition(scores, -num_best_results)[-num_best_results:]
+
+        # add the sentence string (already created from sim_input) and the answer start.
+        return [(sim_input[best_sentence_index+1], perturbed_and_baseline_fails[best_sentence_index][1]) for best_sentence_index in best_sentence_indices]
+
 ################################### PRIVATE ################################### 
 # ----------------------------------------------------------------------------#
 ################################### PUBLIC ####################################
@@ -193,44 +227,45 @@ class BERTAdversarialDatasetAugmentation:
 
         perturbation_results = []
 
-        for (idx, importance) in importances:
-            original_token = sentence[idx]
-            tag = tags[idx][1]
-            masked = self._generate_mask(sentence, idx, BAE_TYPE)
-            tokens = self._predict_top_k(original_token, tag) # T (paper)
-            filtered_tokens = self._filter_tokens(tokens, tag)
-            perturbed_sentences = [ # L (paper)
-                self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts, BAE_TYPE)
-                for token in filtered_tokens
-            ]
-
-            # This is our deviation from BAE!
-            # ignore sentences that don't cause baseline to fail
-            # TODO: Discuss as group. Should we also allow cases where it doesn't fail?
-            if use_baseline:
-                perturbed_and_baseline_fails = self._baseline_fails(perturbed_sentences)
-            else:
-                # just use all of them
-                perturbed_and_baseline_fails = perturbed_sentences
-
-            # If no perturbation works, move to the next most important mask.
-            if perturbed_and_baseline_fails:
-                # Create the sentence strings from the perturbed sentence list as well as the original sentence.
-                sim_input_delimited = [sentence] + [sentence_answer[0] for sentence_answer in perturbed_and_baseline_fails]
-                sim_input = [" ".join(word_list) for word_list in sim_input_delimited]
-                # Get embeddings from the similarity scorer
-                embeddings = self.semantic_sim.encode(sim_input)
-                # first embedding is of the original sentence.
-                original_embedding = embeddings[:1] # 1 x embed_size matrix
-                perturbed_embeddings = embeddings[1:] # |perturbed_sentences| x embed_size matrix
-                # score() returns 1 x |perturbed_sentences| matrix of similarities by inner product.
-                # Flatten and get the index with max score, which is the index of the best sentence.
-                scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
-                best_sentence_index = np.argmax(scores)
-                # add the sentence string (already created from sim_input) and the answer start.
-                perturbation_results.append((sim_input[best_sentence_index+1], perturbed_and_baseline_fails[best_sentence_index][1]))
-        
-        # Unable to find a good perturbation!
+        if self.num_mutations == 1:
+            for (idx, importance) in importances:
+                original_token = sentence[idx]
+                tag = tags[idx][1]
+                masked = self._generate_mask(sentence, idx, BAE_TYPE)
+                tokens = self._predict_top_k(masked, original_token, tag) # T (paper)
+                filtered_tokens = self._filter_tokens(tokens, original_token, tag)
+                perturbed_sentences = [ # L (paper)
+                    self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts, BAE_TYPE)
+                    for token in filtered_tokens
+                ]
+                
+                perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, 1, use_baseline))
+        else:
+            perturbed_sentences = [(sentence, answer_starts)]
+            for (idx, importance) in importances[:self.num_mutations]:
+                original_token = sentence[idx]
+                print(original_token)
+                tag = tags[idx][1]
+                new_perturbed_sentences = []
+                for old_perturbed_sentence in perturbed_sentences:
+                    old_perturbed_sentence_list, old_answer_starts = old_perturbed_sentence
+                    masked = self._generate_mask(old_perturbed_sentence_list, idx, BAE_TYPE)
+                    tokens = self._predict_top_k(masked, original_token, tag) # T (paper)
+                    filtered_tokens = self._filter_tokens(tokens, original_token, tag)
+                    new_perturbed_sentences.extend([ # L (paper)
+                        self._replace_mask(masked, token, original_token, word_idx_to_offset, old_answer_starts, BAE_TYPE)
+                        for token in filtered_tokens
+                    ])
+                    print(new_perturbed_sentences)
+                perturbed_sentences = new_perturbed_sentences
+            print("original sentence", sentence)
+            # Select some top number of most similar results. If there are few perturbed sentences (less than desired top number),
+            # then just pick only one.
+            num_best_results = self.k
+            if len(perturbed_sentences) <= num_best_results:
+                num_best_results = 1
+            perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, num_best_results, use_baseline))
+        print("perturbation_results", perturbation_results)
         return perturbation_results
 
     def perturb_dataset(self, dataset, bae_type='R'):
