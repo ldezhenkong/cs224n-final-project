@@ -93,7 +93,7 @@ class BERTAdversarialDatasetAugmentation:
     def _pos_tags(self, sentence):
         return pos_tag(sentence)
 
-    def _predict_top_k(self, masked, tag=None, method='synonym'):
+    def _predict_top_k(self, masked, tag=None, method='bert'):
         """
         Predicts the top k tokens for masked sentence, of the form
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
