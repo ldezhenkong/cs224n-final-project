@@ -3,15 +3,14 @@ import sys, os, json, copy
 import torch
 from train import get_dataset
 from args import get_train_test_args
-from transformers import DistilBertTokenizerFast
+from transformers import DistilBertTokenizerFast, DistilBertForMaskedLM
 from transformers import DistilBertForQuestionAnswering
 from bae.bae import BERTAdversarialDatasetAugmentation
 from semantic_similarity_scorer.sbert import SBERTScorer
 
 # define parser and arguments
-def get_training_data(args):
+def get_training_data(args, tokenizer):
     util.set_seed(args.seed)
-    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     args.save_dir = util.get_save_dir(args.save_dir, args.run_name)
@@ -133,12 +132,25 @@ def print_data_dict_samples(data_dict, NUM_SAMPLES=5):
 
 def main():
     args = get_train_test_args()
+    tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
+    mlm = DistilBertForMaskedLM.from_pretrained(
+        'distilbert-base-uncased',
+        return_dict=True
+    )
 
-    data_dict = get_training_data(args)
+    data_dict = get_training_data(args, tokenizer)
     
     print_data_dict_samples(data_dict, NUM_SAMPLES=30)
 
-    perturber = BERTAdversarialDatasetAugmentation(None, None, SBERTScorer(), 10)
+    perturber = BERTAdversarialDatasetAugmentation(
+        baseline=None,
+        language_model=None,
+        semantic_sim=SBERTScorer(),
+        tokenizer=tokenizer,
+        mlm=mlm,
+        k=10
+    )
+
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
     output_dir = os.path.dirname(args.perturbed_data_out_path)
@@ -147,7 +159,7 @@ def main():
 
     write_to_disk(args.perturbed_data_out_path, new_data_dict)
 
-    get_training_data(args)
+    get_training_data(args, tokenizer)
 
 if __name__ == '__main__':
     main()

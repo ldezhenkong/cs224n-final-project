@@ -44,18 +44,20 @@ from nltk.corpus import wordnet
 from .util import get_wordnet_pos
 import torch
 import random
+from torch.nn import functional as F
+
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
-        self, baseline, language_model, semantic_sim, k
+        self, baseline, language_model, semantic_sim, tokenizer, mlm, k
     ):
         self.baseline = baseline
         self.language_model = language_model
         self.semantic_sim = semantic_sim # ()
         self.k = k
         self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-        self.MASK_CHAR = u"\u2047"
+        self.tokenizer = tokenizer
+        self.MASK_CHAR = self.tokenizer.mask_token
         random.seed(224)
 
 ################################### PRIVATE ###################################
@@ -100,7 +102,18 @@ class BERTAdversarialDatasetAugmentation:
             syns = wordnet.synsets(masked, pos=get_wordnet_pos(tag))
             lemmas = [lemma for syn in syns for lemma in syn.lemmas()]
             return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != masked.lower()]
-        # TODO: implement BERT version
+        else:
+            text = " ".join(masked)
+            model_input = self.tokenizer.encode_plus(text, return_tensors = "pt")
+            mask_index = torch.where(input["input_ids"][0] == self.tokenizer.mask_token_id)
+            output = self.mlm(**model_input)
+            logits = output.logits
+            softmax = F.softmax(logits, dim = -1)
+            mask_word = softmax[0, mask_index, :]
+            return [
+                self.tokenizer.decode([token])
+                for token in torch.topk(mask_word, self.k, dim = 1)[1][0]
+            ]
 
     def _filter_tokens(self, tokens, tag):
         """
