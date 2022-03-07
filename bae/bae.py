@@ -85,6 +85,10 @@ class BERTAdversarialDatasetAugmentation:
         Returns mask indices in DESCENDING order of importance.
         """
         if method == 'random':
+            tags = self._pos_tags(sentence)
+            print(tags)
+            5/0
+
             idx_importance = [(i, 0.0) for i in range(len(sentence))]
             random.shuffle(idx_importance)
             return idx_importance
