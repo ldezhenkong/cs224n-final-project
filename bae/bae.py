@@ -122,6 +122,9 @@ class BERTAdversarialDatasetAugmentation:
                                 ).to(self.mlm.device)
 
             mask_index = torch.where(model_input["input_ids"][0] == self.tokenizer.mask_token_id)
+            # If mask index is not found for whatever reason (e.g. mask token was at end of text), just skip the prediction.
+            if len(mask_index[0]) == 0:
+                return []
             output = self.mlm(**model_input)
             logits = output.logits
             softmax = F.softmax(logits, dim = -1)
