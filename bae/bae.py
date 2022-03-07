@@ -55,7 +55,7 @@ MLM_MAX_LENGTH = 200
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
-        self, baseline, language_model, semantic_sim, tokenizer, mlm, k, num_mutations=1
+        self, baseline, language_model, semantic_sim, tokenizer, mlm, k, num_mutations=1, num_indexes_upper_bound=-1
     ):
         self.baseline = baseline
         self.language_model = language_model
@@ -66,6 +66,7 @@ class BERTAdversarialDatasetAugmentation:
         self.mlm = mlm
         self.num_mutations = num_mutations
         self.MASK_CHAR = self.tokenizer.mask_token
+        self.num_indexes_upper_bound = num_indexes_upper_bound
         random.seed(224)
 
 ################################### PRIVATE ###################################
@@ -101,7 +102,7 @@ class BERTAdversarialDatasetAugmentation:
     def _pos_tags(self, sentence):
         return pos_tag(sentence)
 
-    def _predict_top_k(self, masked, original_token, tag=None, method='bert'):
+    def _predict_top_k(self, masked, original_token, tag=None, method='synonym'):
         """
         Predicts the top k tokens for masked sentence, of the form
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
@@ -235,7 +236,9 @@ class BERTAdversarialDatasetAugmentation:
         perturbation_results = []
 
         if self.num_mutations == 1:
-            for idx in index_ordering:
+            for i, idx in enumerate(index_ordering):
+                if self.num_indexes_upper_bound != -1 and i >= self.num_indexes_upper_bound:
+                    break
                 original_token = sentence[idx]
                 tag = tags[idx][1]
                 masked = self._generate_mask(sentence, idx, BAE_TYPE)
@@ -250,8 +253,10 @@ class BERTAdversarialDatasetAugmentation:
         else:
             perturbed_sentences = [(sentence, answer_starts)]
             num_successful_mutations = 0
-            for idx in index_ordering:
+            for i, idx in enumerate(index_ordering):
                 if num_successful_mutations == self.num_mutations:
+                    break
+                if self.num_indexes_upper_bound != -1 and i >= self.num_indexes_upper_bound:
                     break
                 original_token = sentence[idx]
                 tag = tags[idx][1]

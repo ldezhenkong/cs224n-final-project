@@ -45,6 +45,8 @@ def get_perturbed_sentences(old_data_dict, perturber, args):
         old_context = old_data_dict['context'][i]
         perturbation_results = perturber.perturb(old_context, old_data_dict['answer'][i]['answer_start'], BAE_TYPE=args.bae_type)
 
+        print('len of perturbation results: {}'.format(len(perturbation_results)))
+
         old_answer_start = old_data_dict['answer'][i]['answer_start'][0]
         old_answer_text = old_data_dict['answer'][i]['text'][0]
         old_answer_num_tokens = len(old_answer_text.split())
@@ -151,7 +153,8 @@ def main():
         tokenizer=tokenizer,
         mlm=mlm,
         k=10,
-        num_mutations=args.num_mutations
+        num_mutations=args.num_mutations,
+        num_indexes_upper_bound=args.num_indexes_upper_bound
     )
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 

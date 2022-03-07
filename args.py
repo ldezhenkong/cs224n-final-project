@@ -30,5 +30,7 @@ def get_train_test_args():
     parser.add_argument('--perturbed-data-out-path', type=str)
     parser.add_argument('--num_mutations', type=int, default=3)
 
+    parser.add_argument('--num_indexes_upper_bound', type=int, default=-1)
+
     args = parser.parse_args()
     return args
