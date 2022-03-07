@@ -106,7 +106,7 @@ class BERTAdversarialDatasetAugmentation:
             return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != original_token.lower()]
         else:
             text = " ".join(masked)
-            model_input = self.tokenizer.encode_plus(text, return_tensors = "pt")
+            model_input = self.tokenizer.encode_plus(text, return_tensors = "pt").to(self.mlm.device)
             mask_index = torch.where(model_input["input_ids"][0] == self.tokenizer.mask_token_id)
             output = self.mlm(**model_input)
             logits = output.logits
@@ -200,11 +200,7 @@ class BERTAdversarialDatasetAugmentation:
         # score() returns 1 x |perturbed_sentences| matrix of similarities by inner product.
         # Flatten and get the index with max score, which is the index of the best sentence.
         scores = self.semantic_sim.score(original_embedding, perturbed_embeddings, method='inner').flatten()
-        best_sentence_indices = []
-        if num_best_results == 1:
-            best_sentence_indices = [np.argmax(scores)]
-        else:
-            best_sentence_indices = np.argpartition(scores, -num_best_results)[-num_best_results:]
+        best_sentence_indices = torch.topk(scores, k=num_best_results).indices
 
         # add the sentence string (already created from sim_input) and the answer start.
         return [(sim_input[best_sentence_index+1], perturbed_and_baseline_fails[best_sentence_index][1]) for best_sentence_index in best_sentence_indices]
@@ -242,9 +238,11 @@ class BERTAdversarialDatasetAugmentation:
                 perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, 1, use_baseline))
         else:
             perturbed_sentences = [(sentence, answer_starts)]
-            for (idx, importance) in importances[:self.num_mutations]:
+            num_successful_mutations = 0
+            for (idx, importance) in importances:
+                if num_successful_mutations == self.num_mutations:
+                    break
                 original_token = sentence[idx]
-                print(original_token)
                 tag = tags[idx][1]
                 new_perturbed_sentences = []
                 for old_perturbed_sentence in perturbed_sentences:
@@ -256,16 +254,15 @@ class BERTAdversarialDatasetAugmentation:
                         self._replace_mask(masked, token, original_token, word_idx_to_offset, old_answer_starts, BAE_TYPE)
                         for token in filtered_tokens
                     ])
-                    print(new_perturbed_sentences)
-                perturbed_sentences = new_perturbed_sentences
-            print("original sentence", sentence)
+                if new_perturbed_sentences:
+                    perturbed_sentences = new_perturbed_sentences
+                    num_successful_mutations += 1
             # Select some top number of most similar results. If there are few perturbed sentences (less than desired top number),
             # then just pick only one.
             num_best_results = self.k
             if len(perturbed_sentences) <= num_best_results:
                 num_best_results = 1
             perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, num_best_results, use_baseline))
-        print("perturbation_results", perturbation_results)
         return perturbation_results
 
     def perturb_dataset(self, dataset, bae_type='R'):

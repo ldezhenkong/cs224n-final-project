@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
+import torch
 
 class SemanticSimilarityScorer:
     """
@@ -12,7 +13,7 @@ class SemanticSimilarityScorer:
         
         return: M = AB
         """
-        return np.inner(A, B)
+        return torch.inner(A, B)
 
     def _score_cos_sim(self, A, B):
         """

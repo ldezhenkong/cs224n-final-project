@@ -138,7 +138,7 @@ def main():
         'distilbert-base-uncased',
         return_dict=True
     )
-    # mlm.to(device)
+    mlm.to(device)
 
     data_dict = get_training_data(args, tokenizer)
     
@@ -147,7 +147,7 @@ def main():
     perturber = BERTAdversarialDatasetAugmentation(
         baseline=None,
         language_model=None,
-        semantic_sim=SBERTScorer(),
+        semantic_sim=SBERTScorer(device),
         tokenizer=tokenizer,
         mlm=mlm,
         k=10,
