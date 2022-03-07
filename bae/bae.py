@@ -46,6 +46,12 @@ import torch
 import random, copy
 from torch.nn import functional as F
 
+# Arbitrarily the mutations to the first 200 words.
+# This is so that we bypass the 512 token input limit
+# for BERT-MLM. In the future, we should implement a
+# sliding window approach on the BERT-MLM inference so
+# that we can mutate on any words. 
+MLM_MAX_LENGTH = 200
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
@@ -82,7 +88,7 @@ class BERTAdversarialDatasetAugmentation:
         Ordering that the tokens should be looked at.
         """
         if method == "random":
-            idx_importance = [i for i in range(len(sentence))]
+            idx_importance = [i for i in range(min(len(sentence), MLM_MAX_LENGTH))]
             random.shuffle(idx_importance)
             return idx_importance
 
@@ -106,7 +112,13 @@ class BERTAdversarialDatasetAugmentation:
             return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != original_token.lower()]
         else:
             text = " ".join(masked)
-            model_input = self.tokenizer.encode_plus(text, return_tensors = "pt").to(self.mlm.device)
+
+            model_input = self.tokenizer.encode_plus(text, return_tensors = "pt", 
+                                    truncation=True,
+                                    padding=True,
+                                    max_length=512,
+                                ).to(self.mlm.device)
+
             mask_index = torch.where(model_input["input_ids"][0] == self.tokenizer.mask_token_id)
             output = self.mlm(**model_input)
             logits = output.logits
