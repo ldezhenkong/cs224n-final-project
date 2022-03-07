@@ -55,7 +55,7 @@ MLM_MAX_LENGTH = 200
 
 class BERTAdversarialDatasetAugmentation:
     def __init__(
-        self, baseline, language_model, semantic_sim, tokenizer, mlm, k, num_mutations=1, num_indexes_upper_bound=-1
+        self, baseline, language_model, semantic_sim, tokenizer, mlm, k, num_mutations=1, num_indexes_upper_bound=-1, token_unmask_method='bert'
     ):
         self.baseline = baseline
         self.language_model = language_model
@@ -67,6 +67,7 @@ class BERTAdversarialDatasetAugmentation:
         self.num_mutations = num_mutations
         self.MASK_CHAR = self.tokenizer.mask_token
         self.num_indexes_upper_bound = num_indexes_upper_bound
+        self.token_unmask_method = token_unmask_method
         random.seed(224)
 
 ################################### PRIVATE ###################################
@@ -111,7 +112,7 @@ class BERTAdversarialDatasetAugmentation:
             syns = wordnet.synsets(original_token, pos=get_wordnet_pos(tag))
             lemmas = [lemma for syn in syns for lemma in syn.lemmas()]
             return [l.name() for l in lemmas[:min(self.k, len(lemmas))] if l.name() != original_token.lower()]
-        else:
+        elif method == 'bert':
             text = " ".join(masked)
 
             model_input = self.tokenizer.encode_plus(text, return_tensors = "pt", 
@@ -129,6 +130,8 @@ class BERTAdversarialDatasetAugmentation:
                 self.tokenizer.decode([token])
                 for token in torch.topk(mask_word, self.k, dim = 1)[1][0]
             ]
+        else:
+            raise NotImplementedError
 
     def _filter_tokens(self, tokens, original_token, tag):
         """
@@ -237,12 +240,12 @@ class BERTAdversarialDatasetAugmentation:
 
         if self.num_mutations == 1:
             for i, idx in enumerate(index_ordering):
-                if self.num_indexes_upper_bound != -1 and i >= self.num_indexes_upper_bound:
+                if self.num_indexes_upper_bound != -1 and len(perturbation_results) >= self.num_indexes_upper_bound:
                     break
                 original_token = sentence[idx]
                 tag = tags[idx][1]
                 masked = self._generate_mask(sentence, idx, BAE_TYPE)
-                tokens = self._predict_top_k(masked, original_token, tag) # T (paper)
+                tokens = self._predict_top_k(masked, original_token, tag, method=self.token_unmask_method) # T (paper)
                 filtered_tokens = self._filter_tokens(tokens, original_token, tag)
                 perturbed_sentences = [ # L (paper)
                     self._replace_mask(masked, token, original_token, word_idx_to_offset, answer_starts, BAE_TYPE)
@@ -255,8 +258,6 @@ class BERTAdversarialDatasetAugmentation:
             num_successful_mutations = 0
             for i, idx in enumerate(index_ordering):
                 if num_successful_mutations == self.num_mutations:
-                    break
-                if self.num_indexes_upper_bound != -1 and i >= self.num_indexes_upper_bound:
                     break
                 original_token = sentence[idx]
                 tag = tags[idx][1]
@@ -275,10 +276,11 @@ class BERTAdversarialDatasetAugmentation:
                     num_successful_mutations += 1
             # Select some top number of most similar results. If there are few perturbed sentences (less than desired top number),
             # then just pick only one.
-            num_best_results = self.k
+            num_best_results = self.num_indexes_upper_bound if self.num_indexes_upper_bound != -1 else self.num_mutations
             if len(perturbed_sentences) <= num_best_results:
                 num_best_results = 1
             perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, num_best_results, use_baseline))
+        print(len(perturbation_results))
         return perturbation_results
 
     def perturb_dataset(self, dataset, bae_type='R'):

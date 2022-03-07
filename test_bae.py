@@ -154,7 +154,8 @@ def main():
         mlm=mlm,
         k=10,
         num_mutations=args.num_mutations,
-        num_indexes_upper_bound=args.num_indexes_upper_bound
+        num_indexes_upper_bound=args.num_indexes_upper_bound,
+        token_unmask_method=args.token_unmask_method,
     )
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
