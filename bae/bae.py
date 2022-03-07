@@ -79,10 +79,7 @@ class BERTAdversarialDatasetAugmentation:
 
     def _index_ordering(self, sentence, method="only_nouns"):
         """
-        Estimates the importance of each token in the sentence, using
-        the baseline model.
-
-        Returns mask indices in DESCENDING order of importance.
+        Ordering that the tokens should be looked at.
         """
         if method == "random":
             idx_importance = [i for i in range(len(sentence))]
