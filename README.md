@@ -16,3 +16,12 @@ e.g.
 ```
 python test_bae.py --train-dir-and-datasets="datasets/oodomain_train:relation_extraction --perturbed-data-out-path="datasets/oodomain_train_perturbed/relation_extraction_pert32"
 ```
+
+### Adam's test-bae commands: Data aug via synonyms
+
+python test_bae.py --train-dir-and-datasets="datasets/oodomain_train:relation_extraction" --perturbed-data-out-path="datasets/oodomain_pertf_bert/relation_extraction_pertf" --num-mutations 1 --token-unmask-method="synonym" --num-indexes-upper-bound 10
+
+python train.py --do-train --train-dir="datasets/tmp2" --train-dir-and-datasets="datasets/tmp2:race_600_3" --eval-every 2000 --run-name baseline
+
+
+python test_bae.py --train-dir-and-datasets="datasets/tmp2:race_600_3" --perturbed-data-out-path="datasets/tmp2:race_600_3" --num-mutations 1 --token-unmask-method="synonym" --num-indexes-upper-bound 10 --num-data-points 600

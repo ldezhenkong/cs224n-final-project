@@ -7,6 +7,12 @@ from transformers import DistilBertTokenizerFast, DistilBertForMaskedLM
 from transformers import DistilBertForQuestionAnswering
 from bae.bae import BERTAdversarialDatasetAugmentation
 from semantic_similarity_scorer.sbert import SBERTScorer
+import random
+
+def new_pseudorandom_hex_id(hex_id):
+    offset = int(random.random() * (2**64))
+    new_hex_id = hex(int(hex_id, 16) + offset)[2:]
+    return new_hex_id
 
 # define parser and arguments
 def get_training_data(args, tokenizer):
@@ -38,6 +44,7 @@ def get_perturbed_sentences(old_data_dict, perturber, args):
         print('<i>:', i)
         if i % (num_data_dict_entries // 20) == 0:
             print('current i: {}, total len:{}'.format(i, num_data_dict_entries))
+
 
         # TODO: generate and pass in answer_end indices
         old_question = old_data_dict['question'][i]
@@ -94,7 +101,8 @@ def write_to_disk(out_path, new_data_dict):
         padded_title = question[0:TITLE_LENGTH] + ' ' * max(TITLE_LENGTH - len(question), 0)
 
         # hack to create unique IDs for each perturbation TODO maybe change this
-        new_id = hex(int(id, 16)+i)[2:]
+        # new_id = hex(int(id, 16)+i)[2:]
+        new_id = new_pseudorandom_hex_id(id)
 
         assert new_id not in used_ids
         used_ids.add(new_id)
@@ -132,8 +140,45 @@ def print_data_dict_samples(data_dict, NUM_SAMPLES=5):
         print('\tAnswer: {}'.format(answer))
         print('')
 
+def oversampling_hack(data_dict, num_datapoints):
+    questions = data_dict['question']
+    ids = data_dict['id']
+    contexts = data_dict['context']
+    answers = data_dict['answer']
+
+    print('old_data_dict len: {}'.format(len(data_dict['question'])))
+
+    data_dict_len = len(questions)
+    assert data_dict_len == len(ids) and \
+           len(ids) == len(contexts) and \
+           len(ids) == len(answers)
+    
+    new_data_dict = {
+        'question': [],
+        'context': [],
+        'id': [],
+        'answer': []
+    }
+
+    for _ in range(num_datapoints):
+        new_idx = random.randint(0, data_dict_len-1)
+        new_data_dict['question'].append(questions[new_idx])
+        new_data_dict['context'].append(contexts[new_idx])
+        new_data_dict['id'].append(ids[new_idx])
+        new_data_dict['answer'].append(answers[new_idx])
+    
+    assert len(new_data_dict['question']) == num_datapoints and \
+           len(new_data_dict['question']) == len(new_data_dict['context']) and \
+           len(new_data_dict['question']) == len(new_data_dict['id']) and \
+           len(new_data_dict['question']) == len(new_data_dict['answer'])
+    
+    print('new_data_dict len: {}'.format(len(new_data_dict['question'])))
+
+    return new_data_dict
+
 def main():
     args = get_train_test_args()
+
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
     mlm = DistilBertForMaskedLM.from_pretrained(
@@ -158,6 +203,9 @@ def main():
         token_unmask_method=args.token_unmask_method,
     )
     new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
+
+    if args.num_data_points is not None:
+        new_data_dict = oversampling_hack(new_data_dict, args.num_data_points)
 
     output_dir = os.path.dirname(args.perturbed_data_out_path)
     if not os.path.exists(output_dir):

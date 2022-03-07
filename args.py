@@ -33,5 +33,7 @@ def get_train_test_args():
 
     parser.add_argument('--num-indexes-upper-bound', type=int)
 
+    parser.add_argument('--num-data-points', type=int) # for oversampling hack
+
     args = parser.parse_args()
     return args
