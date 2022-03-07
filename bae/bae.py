@@ -77,21 +77,18 @@ class BERTAdversarialDatasetAugmentation:
             word_idx_to_offset.append(span[0])
         return sentence, word_idx_to_offset
 
-    def _estimate_importance(self, sentence, method='random'):
+    def _filter_by_noun_indices(self, sentence):
         """
         Estimates the importance of each token in the sentence, using
         the baseline model.
 
         Returns mask indices in DESCENDING order of importance.
         """
-        if method == 'random':
-            idx_importance = [(i, 0.0) for i in range(len(sentence))]
-            random.shuffle(idx_importance)
-            return idx_importance
-        else:
-            # TODO: implement importance by baseline 
-            raise NotImplementedError
-    
+        tags = self._pos_tags(sentence)
+        idx_importance = [idx for idx, tag in enumerate(tags) if get_wordnet_pos(tag[1]) == wordnet.NOUN]
+        random.shuffle(idx_importance)
+        return idx_importance
+
     def _pos_tags(self, sentence):
         return pos_tag(sentence)
 
@@ -217,14 +214,13 @@ class BERTAdversarialDatasetAugmentation:
         """
         # split sentence into word spans using
         sentence, word_idx_to_offset = self._split_sentence(sentence_str)
-        importance_method = 'baseline' if use_baseline else 'random'
-        importances = self._estimate_importance(sentence, method=importance_method) # I (paper)
+        noun_indices = self._filter_by_noun_indices(sentence) # I (paper)
         tags = self._pos_tags(sentence)
 
         perturbation_results = []
 
         if self.num_mutations == 1:
-            for (idx, importance) in importances:
+            for idx in noun_indices:
                 original_token = sentence[idx]
                 tag = tags[idx][1]
                 masked = self._generate_mask(sentence, idx, BAE_TYPE)
@@ -239,7 +235,7 @@ class BERTAdversarialDatasetAugmentation:
         else:
             perturbed_sentences = [(sentence, answer_starts)]
             num_successful_mutations = 0
-            for (idx, importance) in importances:
+            for idx in noun_indices:
                 if num_successful_mutations == self.num_mutations:
                     break
                 original_token = sentence[idx]
