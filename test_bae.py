@@ -17,8 +17,8 @@ def get_training_data(args, tokenizer):
     log = util.get_logger(args.save_dir, 'log_train')
     log.info(f'Args: {json.dumps(vars(args), indent=4, sort_keys=True)}')
     log.info("Preparing Training Data...")
-    # args = copy.copy(args)
-    # args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    args = copy.copy(args)
+    args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     _, data_dict = get_dataset(args, args.train_dir_and_datasets, args.train_datasets, args.train_dir, tokenizer, 'train')
     return data_dict
 
@@ -138,7 +138,7 @@ def main():
         'distilbert-base-uncased',
         return_dict=True
     )
-    mlm.to(device)
+    # mlm.to(device)
 
     data_dict = get_training_data(args, tokenizer)
     
