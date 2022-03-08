@@ -282,15 +282,15 @@ def main():
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         trainer = Trainer(args, log)
         train_dataset, _ = get_dataset(args, args.train_dir_and_datasets, args.train_datasets, args.train_dir, tokenizer, 'train')
-        # log.info("Preparing Validation Data...")
-        # val_dataset, val_dict = get_dataset(args, args.val_dir_and_datasets, args.train_datasets, args.val_dir, tokenizer, 'val')
-        # train_loader = DataLoader(train_dataset,
-        #                         batch_size=args.batch_size,
-        #                         sampler=RandomSampler(train_dataset))
-        # val_loader = DataLoader(val_dataset,
-        #                         batch_size=args.batch_size,
-        #                         sampler=SequentialSampler(val_dataset))
-        # best_scores = trainer.train(model, train_loader, val_loader, val_dict)
+        log.info("Preparing Validation Data...")
+        val_dataset, val_dict = get_dataset(args, args.val_dir_and_datasets, args.train_datasets, args.val_dir, tokenizer, 'val')
+        train_loader = DataLoader(train_dataset,
+                                batch_size=args.batch_size,
+                                sampler=RandomSampler(train_dataset))
+        val_loader = DataLoader(val_dataset,
+                                batch_size=args.batch_size,
+                                sampler=SequentialSampler(val_dataset))
+        best_scores = trainer.train(model, train_loader, val_loader, val_dict)
     if args.do_eval:
         args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         split_name = 'test' if 'test' in args.eval_dir else 'validation'
