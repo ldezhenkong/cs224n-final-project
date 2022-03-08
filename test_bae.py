@@ -190,33 +190,33 @@ def main():
 
     data_dict = get_training_data(args, tokenizer)
 
-    print('length of data dict:', len(data_dict['context']))
+    # print('length of data dict:', len(data_dict['context']))
     
-    # print_data_dict_samples(data_dict, NUM_SAMPLES=30)
+    print_data_dict_samples(data_dict, NUM_SAMPLES=30)
 
-    # perturber = BERTAdversarialDatasetAugmentation(
-    #     baseline=None,
-    #     language_model=None,
-    #     semantic_sim=USEScorer(device),
-    #     tokenizer=tokenizer,
-    #     mlm=mlm,
-    #     k=10,
-    #     num_mutations=args.num_mutations,
-    #     num_indexes_upper_bound=args.num_indexes_upper_bound,
-    #     token_unmask_method=args.token_unmask_method,
-    # )
-    # new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
+    perturber = BERTAdversarialDatasetAugmentation(
+        baseline=None,
+        language_model=None,
+        semantic_sim=SBERTScorer(device),
+        tokenizer=tokenizer,
+        mlm=mlm,
+        k=10,
+        num_mutations=args.num_mutations,
+        num_indexes_upper_bound=args.num_indexes_upper_bound,
+        token_unmask_method=args.token_unmask_method,
+    )
+    new_data_dict = get_perturbed_sentences(data_dict, perturber, args)
 
-    # if args.num_data_points is not None:
-    #     new_data_dict = oversampling_hack(new_data_dict, args.num_data_points)
+    if args.num_data_points is not None:
+        new_data_dict = oversampling_hack(new_data_dict, args.num_data_points)
 
-    # output_dir = os.path.dirname(args.perturbed_data_out_path)
-    # if not os.path.exists(output_dir):
-    #     os.makedirs(output_dir)
+    output_dir = os.path.dirname(args.perturbed_data_out_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    # write_to_disk(args.perturbed_data_out_path, new_data_dict)
+    write_to_disk(args.perturbed_data_out_path, new_data_dict)
 
-    # get_training_data(args, tokenizer)
+    get_training_data(args, tokenizer)
 
 if __name__ == '__main__':
     main()
