@@ -20,9 +20,3 @@ class USEScorer(SemanticSimilarityScorerTF):
     
     def encode(self, sentences):
         return self.model(sentences)
-
-    # def __init__(self, device, pretrain='all-MiniLM-L6-v2'):
-    #     self.model = SentenceTransformer(pretrain).to(device)
-    
-    # def encode(self, sentences):
-    #     return self.model.encode(sentences, convert_to_tensor=True)
