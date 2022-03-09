@@ -126,9 +126,11 @@ class BERTAdversarialDatasetAugmentation:
             logits = output.logits
             softmax = F.softmax(logits, dim = -1)
             if len(mask_index[0]) == 0:
+                print("Failed to mask...")
                 return []
 
             mask_word = softmax[0, mask_index, :]
+            print("Masked!")
             return [
                 self.tokenizer.decode([token])
                 for token in torch.topk(mask_word, self.k, dim = 1)[1][0]
@@ -283,7 +285,6 @@ class BERTAdversarialDatasetAugmentation:
             if len(perturbed_sentences) <= num_best_results:
                 num_best_results = 1
             perturbation_results.extend(self._get_most_similar_sentences(sentence, perturbed_sentences, num_best_results, use_baseline))
-        print(len(perturbation_results))
         return perturbation_results
 
     def perturb_dataset(self, dataset, bae_type='R'):

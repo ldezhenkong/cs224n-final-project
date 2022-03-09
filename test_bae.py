@@ -42,9 +42,10 @@ def get_perturbed_sentences(old_data_dict, perturber, args):
     num_data_dict_entries = len(old_data_dict['context'])
 
     for i in range(num_data_dict_entries):
-        print('<i>:', i)
+        # print('<i>:', i)
         if i % (num_data_dict_entries // 20) == 0:
-            print('current i: {}, total len:{}'.format(i, num_data_dict_entries))
+            ...
+            # print('current i: {}, total len:{}'.format(i, num_data_dict_entries))
 
 
         # TODO: generate and pass in answer_end indices
@@ -53,7 +54,7 @@ def get_perturbed_sentences(old_data_dict, perturber, args):
         old_context = old_data_dict['context'][i]
         perturbation_results = perturber.perturb(old_context, old_data_dict['answer'][i]['answer_start'], BAE_TYPE=args.bae_type)
 
-        print('len of perturbation results: {}'.format(len(perturbation_results)))
+        # print('len of perturbation results: {}'.format(len(perturbation_results)))
 
         old_answer_start = old_data_dict['answer'][i]['answer_start'][0]
         old_answer_text = old_data_dict['answer'][i]['text'][0]
@@ -192,7 +193,7 @@ def main():
 
     # print('length of data dict:', len(data_dict['context']))
     
-    print_data_dict_samples(data_dict, NUM_SAMPLES=30)
+    # print_data_dict_samples(data_dict, NUM_SAMPLES=30)
 
     perturber = BERTAdversarialDatasetAugmentation(
         baseline=None,
