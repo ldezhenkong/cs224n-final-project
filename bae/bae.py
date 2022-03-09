@@ -103,7 +103,7 @@ class BERTAdversarialDatasetAugmentation:
     def _pos_tags(self, sentence):
         return pos_tag(sentence)
 
-    def _predict_top_k(self, masked, original_token, tag=None, method='synonym'):
+    def _predict_top_k(self, masked, original_token, tag=None, method='bert'):
         """
         Predicts the top k tokens for masked sentence, of the form
         mask = [t1, t2 ..., t_mask-1, MASK, t_mask+1, .... tn]
@@ -125,6 +125,9 @@ class BERTAdversarialDatasetAugmentation:
             output = self.mlm(**model_input)
             logits = output.logits
             softmax = F.softmax(logits, dim = -1)
+            if len(mask_index[0]) == 0:
+                return []
+
             mask_word = softmax[0, mask_index, :]
             return [
                 self.tokenizer.decode([token])

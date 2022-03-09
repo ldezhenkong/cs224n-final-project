@@ -197,7 +197,7 @@ def main():
     perturber = BERTAdversarialDatasetAugmentation(
         baseline=None,
         language_model=None,
-        semantic_sim=SBERTScorer(device),
+        semantic_sim=USEScorer(device),
         tokenizer=tokenizer,
         mlm=mlm,
         k=10,
