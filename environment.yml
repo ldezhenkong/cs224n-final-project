@@ -16,3 +16,5 @@ dependencies:
     - tensorflow
     - tensorboardX
     - sentence-transformers
+    - tensorflow-hub
+    - pandas

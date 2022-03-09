@@ -178,6 +178,14 @@ def oversampling_hack(data_dict, num_datapoints):
 
     return new_data_dict
 
+def load_semantic_sim(args, device):
+    if args.semantic_similarity_scorer == 'use':
+        return USEScorer(device)
+    elif args.semantic_similarity_scorer == 'sbert':
+        return SBERTScorer(device)
+    else:
+        raise NotImplementedError
+
 def main():
     args = get_train_test_args()
 
@@ -198,7 +206,7 @@ def main():
     perturber = BERTAdversarialDatasetAugmentation(
         baseline=None,
         language_model=None,
-        semantic_sim=USEScorer(device),
+        semantic_sim=load_semantic_sim(args, device),
         tokenizer=tokenizer,
         mlm=mlm,
         k=10,
