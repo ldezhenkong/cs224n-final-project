@@ -273,7 +273,7 @@ class BERTAdversarialDatasetAugmentation:
                 for old_perturbed_sentence in perturbed_sentences:
                     old_perturbed_sentence_list, old_answer_starts = old_perturbed_sentence
                     masked = self._generate_mask(old_perturbed_sentence_list, idx, BAE_TYPE)
-                    tokens = self._predict_top_k(masked, original_token, tag) # T (paper)
+                    tokens = self._predict_top_k(masked, original_token, tag, method=self.token_unmask_method) # T (paper)
                     filtered_tokens = self._filter_tokens(tokens, original_token, tag)
                     new_perturbed_sentences.extend([ # L (paper)
                         self._replace_mask(masked, token, original_token, word_idx_to_offset, old_answer_starts, BAE_TYPE)
